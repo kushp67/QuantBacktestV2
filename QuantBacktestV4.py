@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- 
 """
 Created on Sat Feb  1 12:14:03 2025
 
-@author: kushp
+Enhanced by Kush Patel
 """
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -16,10 +17,146 @@ from scipy.stats import norm, ttest_ind
 from statsmodels.tsa.stattools import adfuller, acf
 import io
 
+# Set page configuration
+st.set_page_config(
+    page_title="QuantBacktest Pro",
+    page_icon="📈",
+    layout="wide",
+)
+
+# ------------------------------
+# Advanced Custom CSS Styling
+# ------------------------------
+def local_css():
+    st.markdown(
+        """
+        <style>
+        /* Global Styles */
+        html, body {
+            background: #E7F7EE; /* Mint Green background */
+            font-family: 'Open Sans', sans-serif;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+        }
+        .reportview-container .main {
+            background: #E7F7EE;
+        }
+        /* Custom Header */
+        header {
+            background-color: #5EB583; /* Accent Green */
+            padding: 1rem;
+            text-align: center;
+            color: #FFFFFF;
+            font-size: 2.5rem;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-bottom: 2px solid #4AA371;
+            margin-bottom: 1rem;
+        }
+        /* Sidebar Styling */
+        .css-1d391kg { 
+            background-color: #FFFFFF; /* Clean White */
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #E1F0E5;
+        }
+        /* Metric Cards */
+        .metric-card {
+            background: #FFFFFF;
+            border: 1px solid #E1F0E5;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s ease;
+            margin: 10px;
+        }
+        .metric-card:hover {
+            transform: scale(1.03);
+        }
+        .metric-card h3 {
+            margin-bottom: 10px;
+            color: #333333;
+        }
+        .metric-card p {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #5EB583;
+        }
+        /* Buttons */
+        button, .stButton>button {
+            background-color: #5EB583;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        button:hover, .stButton>button:hover {
+            background-color: #4AA371;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        /* Tab Headers */
+        .stTabs [data-baseweb="tab-list"] button {
+            font-weight: 600;
+            color: #333333;
+            background: #FFFFFF;
+            border: 1px solid #E1F0E5;
+            border-radius: 6px;
+            padding: 8px 16px;
+            margin-right: 4px;
+            transition: background 0.3s ease;
+        }
+        .stTabs [data-baseweb="tab-list"] button:focus {
+            outline: none;
+        }
+        .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+            background: #5EB583;
+            color: #FFFFFF;
+            border-color: #5EB583;
+        }
+        /* Chart Containers */
+        .chart-container {
+            background: #FFFFFF;
+            border: 1px solid #E1F0E5;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        /* Links */
+        a {
+            color: #5EB583;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #E7F7EE;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #C5E8D4;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #A9DAB6;
+        }
+        </style>
+        """, unsafe_allow_html=True
+    )
+
+local_css()
+
 # ------------------------------
 # Data Acquisition Module
 # ------------------------------
-
 class DataFetcher:
     """
     Fetch historical stock price data using yfinance.
@@ -39,7 +176,6 @@ class DataFetcher:
 # ------------------------------
 # Strategy Builder Module (Stock Strategies)
 # ------------------------------
-
 class Strategy:
     """
     Base Strategy class. Subclasses should implement generate_signals.
@@ -137,9 +273,8 @@ class SecondDerivativeMAStrategy(Strategy):
         return signals
 
 # ------------------------------
-# Options Strategies (Simplified Simulation with Actual Options Data)
+# Options Strategies (Simplified Simulation)
 # ------------------------------
-
 class WheelStrategyOptions(Strategy):
     def __init__(self, put_offset=0.05, call_offset=0.05, holding_period=5, shares=100):
         self.put_offset = put_offset
@@ -299,7 +434,6 @@ class IronCondorsStrategyOptions(Strategy):
 # ------------------------------
 # Stock Backtesting Engine
 # ------------------------------
-
 class Backtester:
     def __init__(self, data: pd.DataFrame, signals: pd.DataFrame, initial_capital: float = 100000.0, shares: int = 100):
         self.data = data
@@ -355,7 +489,6 @@ class Backtester:
 # ------------------------------
 # Advanced Analytics Functions
 # ------------------------------
-
 def compute_sharpe_ratio(returns, risk_free_rate=0.0):
     excess_returns = returns - risk_free_rate/252
     return np.sqrt(252) * excess_returns.mean() / (returns.std() + 1e-9)
@@ -443,44 +576,38 @@ def compute_beta(strategy_returns, market_returns):
 # ------------------------------
 # Visualization Functions
 # ------------------------------
-
 def plot_results(portfolio: pd.DataFrame):
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(portfolio.index, portfolio['total'], label="Strategy Portfolio")
-    ax.set_title("Portfolio Performance")
+    ax.plot(portfolio.index, portfolio['total'], label="Strategy Portfolio", color="#2980b9")
+    ax.set_title("Portfolio Performance", fontsize=16, fontweight='600')
     ax.set_xlabel("Date")
     ax.set_ylabel("Total Value")
     ax.legend()
-    ax.grid(True)
+    ax.grid(True, linestyle='--', alpha=0.5)
     return fig
 
 def plot_buy_hold_comparison(portfolio: pd.DataFrame, data: pd.DataFrame, initial_capital: float):
     bh_shares = initial_capital / data['Close'].iloc[0]
     buy_hold = bh_shares * data['Close']
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(portfolio.index, portfolio['total'], label="Strategy Portfolio")
-    ax.plot(data.index, buy_hold, label="Buy & Hold", linestyle='--')
-    ax.set_title("Strategy vs. Buy & Hold Comparison")
+    ax.plot(portfolio.index, portfolio['total'], label="Strategy Portfolio", color="#27ae60")
+    ax.plot(data.index, buy_hold, label="Buy & Hold", linestyle='--', color="#c0392b")
+    ax.set_title("Strategy vs. Buy & Hold Comparison", fontsize=16, fontweight='600')
     ax.set_xlabel("Date")
     ax.set_ylabel("Portfolio Value")
     ax.legend()
-    ax.grid(True)
+    ax.grid(True, linestyle='--', alpha=0.5)
     return fig
 
 def plot_monte_carlo(simulated_values):
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.hist(simulated_values, bins=50, alpha=0.7, color='orange')
-    ax.set_title("Monte Carlo Simulation: Final Portfolio Values")
+    ax.hist(simulated_values, bins=50, alpha=0.7, color='#f39c12')
+    ax.set_title("Monte Carlo Simulation: Final Portfolio Values", fontsize=16, fontweight='600')
     ax.set_xlabel("Final Portfolio Value")
     ax.set_ylabel("Frequency")
     return fig
 
-# ------------------------------
-# New Interactive Visualizations for Advanced Analytics
-# ------------------------------
-
 def plot_beta_comparison(strategy_returns, market_returns):
-    # Squeeze to ensure inputs are 1-dimensional
     if hasattr(strategy_returns, "squeeze"):
         strategy_returns = strategy_returns.squeeze()
     if hasattr(market_returns, "squeeze"):
@@ -502,7 +629,7 @@ def plot_beta_comparison(strategy_returns, market_returns):
 def plot_qq(returns):
     fig, ax = plt.subplots(figsize=(8, 6))
     sm.qqplot(returns, line='s', ax=ax, alpha=0.5)
-    ax.set_title('QQ-Plot of Strategy Returns')
+    ax.set_title('QQ-Plot of Strategy Returns', fontsize=16, fontweight='600')
     fig.tight_layout()
     return fig
 
@@ -524,12 +651,12 @@ def generate_report(portfolio, market_data, annual_return, max_dd, avg_dd, rec_t
 # ------------------------------
 # Streamlit Web App
 # ------------------------------
-
 def main():
-    st.title("QuantBacktest Web App")
-    st.markdown("A quantitative backtesting platform for stock and options trading strategies with advanced analytics.")
+    # Custom Header
+    st.markdown("<header>QuantBacktest Pro</header>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; font-size: 1.2rem; margin-bottom: 1rem;'>A professional quantitative backtesting platform for stocks and options trading strategies.</div>", unsafe_allow_html=True)
 
-    # Sidebar – Backtest settings
+    # Sidebar – Enhanced Backtest Settings
     st.sidebar.header("Backtest Settings")
     ticker = st.sidebar.text_input("Ticker", value="AAPL")
     start_date = st.sidebar.date_input("Start Date", value=datetime(2020, 1, 1))
@@ -543,7 +670,6 @@ def main():
     selected_strategy = st.sidebar.selectbox("Select Strategy", strategy_options)
 
     portfolio = None
-
     try:
         fetcher = DataFetcher(ticker, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
         data = fetcher.fetch()
@@ -626,14 +752,22 @@ def main():
         days = (portfolio.index[-1] - portfolio.index[0]).days
         annual_return = (1 + total_return) ** (365.0 / days) - 1 if days > 0 else np.nan
         sharpe = compute_sharpe_ratio(portfolio['returns'])
-        st.write({
-            "Total Return (%)": f"{total_return * 100:.2f}%",
-            "Annualized Return (%)": f"{annual_return * 100:.2f}%",
-            "Sharpe Ratio": f"{sharpe:.2f}"
-        })
+
+        # Display metric cards in columns
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f'<div class="metric-card"><h3>Total Return</h3><p>{total_return * 100:.2f}%</p></div>', unsafe_allow_html=True)
+        with col2:
+            st.markdown(f'<div class="metric-card"><h3>Annualized Return</h3><p>{annual_return * 100:.2f}%</p></div>', unsafe_allow_html=True)
+        with col3:
+            st.markdown(f'<div class="metric-card"><h3>Sharpe Ratio</h3><p>{sharpe:.2f}</p></div>', unsafe_allow_html=True)
+
         max_dd, avg_dd, rec_time = compute_drawdown_metrics(portfolio)
         sortino = compute_sortino_ratio(portfolio['returns'])
         calmar = compute_calmar_ratio(annual_return, max_dd)
+
+        st.markdown("---")
+        st.subheader("Detailed Performance Metrics")
         st.write({
             "Max Drawdown (%)": f"{max_dd * 100:.2f}%",
             "Average Drawdown (%)": f"{avg_dd * 100:.2f}%",
@@ -650,12 +784,11 @@ def main():
         st.pyplot(fig2)
 
         # ------------------------------
-        # Advanced Analytics Dashboard (Always Run All Analytics)
+        # Advanced Analytics Dashboard
         # ------------------------------
         st.markdown("### Advanced Analytics Dashboard")
-        st.markdown("Below are all the advanced analytics for your strategy.")
+        st.markdown("Explore detailed analytics in the tabs below:")
 
-        # Retrieve market data for statistical tests and beta analysis
         market_data = get_market_data("SPY", start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
         market_returns = market_data['Close'].pct_change().fillna(0.0)
         beta = compute_beta(portfolio['returns'], market_returns)
@@ -718,12 +851,12 @@ def main():
             st.markdown("#### Hedge Optimization")
             st.write(f"Portfolio Beta (vs. SPY): {beta:.2f}")
             if beta > 1:
-                st.write("Suggestion: The portfolio is more volatile than SPY. Consider hedging with SPY put options or other risk reduction strategies.")
+                st.write("Suggestion: The portfolio is more volatile than SPY. Consider hedging with SPY put options or other risk mitigation strategies.")
             elif beta < 1:
                 st.write("Suggestion: The portfolio is less volatile than SPY.")
             else:
-                st.write("Suggestion: The portfolio beta is around 1, similar to the market.")
-
+                st.write("Suggestion: The portfolio beta is close to 1, matching the market.")
+        
         with tabs[6]:
             st.markdown("#### Options Greeks Tracking")
             st.markdown("Enter parameters below to compute options Greeks:")
@@ -736,7 +869,7 @@ def main():
             greeks = compute_greeks(S, K, T, r, sigma, option_type)
             st.write("Computed Options Greeks:")
             st.write(greeks)
-
+        
         with tabs[7]:
             st.markdown("#### Export Summary Report")
             report_df = generate_report(portfolio, market_data, annual_return, max_dd, avg_dd, rec_time, sharpe, sortino, calmar, beta)
