@@ -4,7 +4,6 @@ Created on Sat Feb  1 12:14:03 2025
 
 @author: kushp
 """
-
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -80,7 +79,7 @@ class RSITradingStrategy(Strategy):
     def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
         signals = pd.DataFrame(index=data.index)
         signals['rsi'] = self.compute_rsi(data)
-        sig = [1 if r < self.oversold else 0 if r > self.overbought else 0 for r in signals['rsi']]
+        sig = [1 if r < self.oversold else 0 for r in signals['rsi']]
         signals['signal'] = sig
         signals['positions'] = pd.Series(sig, index=signals.index).diff().fillna(0.0)
         return signals
@@ -140,6 +139,7 @@ class SecondDerivativeMAStrategy(Strategy):
 # ------------------------------
 # Options Strategies (Simplified Simulation with Actual Options Data)
 # ------------------------------
+
 class WheelStrategyOptions(Strategy):
     def __init__(self, put_offset=0.05, call_offset=0.05, holding_period=5, shares=100):
         self.put_offset = put_offset
@@ -480,7 +480,7 @@ def plot_monte_carlo(simulated_values):
 # ------------------------------
 
 def plot_beta_comparison(strategy_returns, market_returns):
-    # Ensure both inputs are 1-dimensional by squeezing any extra dimensions.
+    # Squeeze to ensure inputs are 1-dimensional
     if hasattr(strategy_returns, "squeeze"):
         strategy_returns = strategy_returns.squeeze()
     if hasattr(market_returns, "squeeze"):
@@ -489,7 +489,6 @@ def plot_beta_comparison(strategy_returns, market_returns):
         'Strategy Returns': strategy_returns,
         'Market Returns': market_returns
     }).dropna()
-    # Create an interactive scatter plot with a regression line.
     fig = px.scatter(
         df, 
         x='Market Returns', 
@@ -508,9 +507,6 @@ def plot_qq(returns):
     return fig
 
 def generate_report(portfolio, market_data, annual_return, max_dd, avg_dd, rec_time, sharpe, sortino, calmar, beta):
-    """
-    Generate a summary report in CSV format.
-    """
     report_dict = {
         "Total Return (%)": [(portfolio['total'].iloc[-1] - portfolio['total'].iloc[0]) / portfolio['total'].iloc[0] * 100],
         "Annualized Return (%)": [annual_return * 100],
@@ -545,13 +541,6 @@ def main():
                         "Custom Profit/Stop", "Second Derivative MA",
                         "Wheel Strategy", "Credit Spreads", "Iron Condors"]
     selected_strategy = st.sidebar.selectbox("Select Strategy", strategy_options)
-
-    # Advanced Analytics option is still available for simulation settings but our new dashboard will appear later
-    advanced_option = st.sidebar.selectbox("Advanced Analytics",
-                      ["None", "Monte Carlo Simulation & Risk Metrics",
-                       "Risk-Adjusted Metrics & Drawdown Analysis",
-                       "Statistical Edge & Market Comparison", "Hedge Optimization",
-                       "Options Greeks Tracking"])
 
     portfolio = None
 
@@ -661,17 +650,26 @@ def main():
         st.pyplot(fig2)
 
         # ------------------------------
-        # Advanced Analytics Dashboard (Interactive Tabs)
+        # Advanced Analytics Dashboard (Always Run All Analytics)
         # ------------------------------
         st.markdown("### Advanced Analytics Dashboard")
-        st.markdown("Explore interactive plots and download a summary report of key metrics below.")
-        
+        st.markdown("Below are all the advanced analytics for your strategy.")
+
         # Retrieve market data for statistical tests and beta analysis
         market_data = get_market_data("SPY", start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
         market_returns = market_data['Close'].pct_change().fillna(0.0)
         beta = compute_beta(portfolio['returns'], market_returns)
 
-        tabs = st.tabs(["Performance Overview", "Beta Analysis", "QQ Plot", "Export Report"])
+        tabs = st.tabs([
+            "Performance Overview", 
+            "Beta Analysis", 
+            "QQ Plot", 
+            "Monte Carlo Simulation", 
+            "Statistical Edge", 
+            "Hedge Optimization", 
+            "Options Greeks", 
+            "Export Report"
+        ])
 
         with tabs[0]:
             st.markdown("#### Performance Overview")
@@ -683,21 +681,63 @@ def main():
             st.write(f"**Average Drawdown (%):** {avg_dd * 100:.2f}%")
             st.write(f"**Average Recovery Time (days):** {rec_time:.1f}")
             st.write(f"**Portfolio Beta (vs. SPY):** {beta:.2f}")
-            st.markdown("This overview summarizes key risk-adjusted performance metrics and drawdown statistics for your strategy.")
 
         with tabs[1]:
-            st.markdown("#### Interactive Beta Analysis")
-            st.markdown("Hover over the points to explore the relationship between your strategy's returns and the market returns.")
+            st.markdown("#### Beta Analysis")
             beta_fig = plot_beta_comparison(portfolio['returns'], market_returns)
             st.plotly_chart(beta_fig, use_container_width=True)
 
         with tabs[2]:
-            st.markdown("#### QQ Plot of Strategy Returns")
-            st.markdown("This QQ plot compares the distribution of your strategy's returns to a normal distribution.")
+            st.markdown("#### QQ Plot")
             qq_fig = plot_qq(portfolio['returns'].dropna())
             st.pyplot(qq_fig)
 
         with tabs[3]:
+            st.markdown("#### Monte Carlo Simulation & Risk Metrics")
+            num_simulations = 1000
+            horizon = 252
+            simulated_vals = monte_carlo_simulation(portfolio['returns'], portfolio['total'].iloc[-1], num_simulations, horizon)
+            fig_mc = plot_monte_carlo(simulated_vals)
+            st.pyplot(fig_mc)
+            VaR, CVaR = compute_VaR_CVaR(simulated_vals, confidence_level=0.95)
+            st.write(f"Value at Risk (95%): {VaR:.2f}")
+            st.write(f"Conditional VaR (95%): {CVaR:.2f}")
+            blowup_prob = np.mean(simulated_vals < initial_capital) * 100
+            st.write(f"Blowup Probability (% final < initial): {blowup_prob:.2f}%")
+
+        with tabs[4]:
+            st.markdown("#### Statistical Edge & Market Comparison")
+            t_stat, p_value, adf_result, autocorr = perform_statistical_tests(portfolio['returns'], market_returns)
+            st.write(f"t-test Statistic: {t_stat:.2f}, p-value: {p_value:.4f}")
+            st.write("ADF Test Result:")
+            st.write(adf_result)
+            st.write("Autocorrelation (first 10 lags):")
+            st.write(autocorr[:10])
+
+        with tabs[5]:
+            st.markdown("#### Hedge Optimization")
+            st.write(f"Portfolio Beta (vs. SPY): {beta:.2f}")
+            if beta > 1:
+                st.write("Suggestion: The portfolio is more volatile than SPY. Consider hedging with SPY put options or other risk reduction strategies.")
+            elif beta < 1:
+                st.write("Suggestion: The portfolio is less volatile than SPY.")
+            else:
+                st.write("Suggestion: The portfolio beta is around 1, similar to the market.")
+
+        with tabs[6]:
+            st.markdown("#### Options Greeks Tracking")
+            st.markdown("Enter parameters below to compute options Greeks:")
+            S = st.number_input("Underlying Price (S)", value=float(data['Close'].iloc[-1]))
+            K = st.number_input("Strike Price (K)", value=float(data['Close'].iloc[-1]))
+            T = st.number_input("Time to Expiration (years)", value=0.25, step=0.01)
+            r = st.number_input("Risk-Free Rate (annual)", value=0.02, step=0.001)
+            sigma = st.number_input("Volatility (annual)", value=0.2, step=0.01)
+            option_type = st.selectbox("Option Type", ["call", "put"])
+            greeks = compute_greeks(S, K, T, r, sigma, option_type)
+            st.write("Computed Options Greeks:")
+            st.write(greeks)
+
+        with tabs[7]:
             st.markdown("#### Export Summary Report")
             report_df = generate_report(portfolio, market_data, annual_return, max_dd, avg_dd, rec_time, sharpe, sortino, calmar, beta)
             st.dataframe(report_df)
@@ -708,59 +748,6 @@ def main():
                 file_name='quantbacktest_report.csv',
                 mime='text/csv'
             )
-
-        # ------------------------------
-        # Existing Advanced Analytics Options
-        # ------------------------------
-        if advanced_option == "Monte Carlo Simulation & Risk Metrics":
-            st.subheader("Monte Carlo Simulation & Risk Metrics")
-            num_simulations = st.sidebar.number_input("Number of Simulations", min_value=100, value=1000, step=100)
-            horizon = st.sidebar.number_input("Simulation Horizon (days)", min_value=30, value=252, step=10)
-            simulated_vals = monte_carlo_simulation(portfolio['returns'], portfolio['total'].iloc[-1], num_simulations, horizon)
-            fig_mc = plot_monte_carlo(simulated_vals)
-            st.pyplot(fig_mc)
-            VaR, CVaR = compute_VaR_CVaR(simulated_vals, confidence_level=0.95)
-            st.write(f"Value at Risk (95%): {VaR:.2f}")
-            st.write(f"Conditional VaR (95%): {CVaR:.2f}")
-            blowup_prob = np.mean(simulated_vals < initial_capital) * 100
-            st.write(f"Blowup Probability (% final < initial): {blowup_prob:.2f}%")
-        elif advanced_option == "Risk-Adjusted Metrics & Drawdown Analysis":
-            st.subheader("Risk-Adjusted Metrics & Detailed Drawdown Analysis")
-            st.write(f"Sortino Ratio: {compute_sortino_ratio(portfolio['returns']):.2f}")
-            st.write(f"Calmar Ratio: {compute_calmar_ratio(annual_return, max_dd):.2f}")
-            st.write(f"Max Drawdown: {max_dd * 100:.2f}%")
-            st.write(f"Average Drawdown: {avg_dd * 100:.2f}%")
-            st.write(f"Average Recovery Time: {rec_time:.1f} days")
-        elif advanced_option == "Statistical Edge & Market Comparison":
-            st.subheader("Statistical Edge & Market Comparison")
-            t_stat, p_value, adf_result, autocorr = perform_statistical_tests(portfolio['returns'], market_returns)
-            t_stat_scalar = t_stat.item() if hasattr(t_stat, "item") and np.isscalar(t_stat) == False else t_stat
-            p_value_scalar = p_value.item() if hasattr(p_value, "item") and np.isscalar(p_value) == False else p_value
-            st.write(f"t-test Statistic: {t_stat_scalar:.2f}, p-value: {p_value_scalar:.4f}")
-            st.write("ADF Test Result (statistic, p-value, #lags, nobs, critical values):")
-            st.write(adf_result)
-            st.write("Autocorrelation (first 10 lags):")
-            st.write(autocorr[:10])
-        elif advanced_option == "Hedge Optimization":
-            st.subheader("Hedge Optimization & Portfolio Risk Management")
-            beta = compute_beta(portfolio['returns'], market_returns)
-            st.write(f"Portfolio Beta (vs. SPY): {beta:.2f}")
-            if beta > 1:
-                st.write("Suggestion: Portfolio is more volatile than SPY. Consider hedging with SPY put options.")
-            elif beta < 1:
-                st.write("Suggestion: Portfolio is less volatile than SPY.")
-        elif advanced_option == "Options Greeks Tracking":
-            st.subheader("Options Greeks Tracking")
-            st.sidebar.subheader("Options Greeks Input")
-            S = st.sidebar.number_input("Underlying Price (S)", value=float(data['Close'].iloc[-1]))
-            K = st.sidebar.number_input("Strike Price (K)", value=float(data['Close'].iloc[-1]))
-            T = st.sidebar.number_input("Time to Expiration (years)", value=0.25, step=0.01)
-            r = st.sidebar.number_input("Risk-Free Rate (annual)", value=0.02, step=0.001)
-            sigma = st.sidebar.number_input("Volatility (annual)", value=0.2, step=0.01)
-            option_type = st.sidebar.selectbox("Option Type", ["call", "put"])
-            greeks = compute_greeks(S, K, T, r, sigma, option_type)
-            st.write("Option Greeks:")
-            st.write(greeks)
 
 if __name__ == "__main__":
     main()
